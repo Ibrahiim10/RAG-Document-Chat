@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       status: 'processing',
     });
 
+    // 4- Process the document (extract text and create chunks)
 
 
-    
   } catch (error) {}
 }

@@ -9,9 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@langchain/community": "^0.3.59",
+    "@langchain/core": "^0.3.80",
+    "@langchain/textsplitters": "^0.1.0",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "langchain": "^0.3.34",
     "lucide-react": "^0.562.0",
     "mongoose": "^9.1.4",
     "next": "16.1.3",
