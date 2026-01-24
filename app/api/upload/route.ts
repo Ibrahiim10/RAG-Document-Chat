@@ -1,4 +1,6 @@
-import { createDocument } from '@/lib/mongodb';
+import { generateEmbeddings } from '@/lib/ai/embeddings';
+import { processDocument } from '@/lib/document-processor';
+import { createDocument, updateDocument } from '@/lib/mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -42,6 +44,23 @@ export async function POST(request: NextRequest) {
 
     // 4- Process the document (extract text and create chunks)
 
+    const { content, chunks } = await processDocument(file);
 
+    if (chunks.length === 0) {
+      // update the document status to error
+      await updateDocument(documentId, {
+        status: 'error',
+        errorMessage: 'No chunks were created from the document',
+      });
+      return NextResponse.json(
+        { error: 'No chunks were created from the document' },
+        { status: 400 },
+      );
+    }
+
+    // 5- Generate embeddings for all chunks
+    const embeddings = await generateEmbeddings(chunks);
+
+    // 6- Store vectors in pinecone
   } catch (error) {}
 }
