@@ -1,9 +1,18 @@
+'use client';
+
+import FileUploaded from '@/components/file-uploaded';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, MessageSquare, RefreshCw, Upload } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Home() {
+  const handleFileProcessed = (result: {
+    documentId: string;
+    filename: string;
+  }) => {
+    console.log('File processed', result);
+  };
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -63,10 +72,10 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {/* <FileUpload 
+                <FileUploaded
                   onFileProcessed={handleFileProcessed}
                   maxSize={100 * 1024 * 1024} // 100MB
-                /> */}
+                />
               </CardContent>
             </Card>
           </div>
