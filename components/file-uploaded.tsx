@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { useDropzone } from 'react-dropzone';
 import { AlertCircle, CheckCircle, File, Upload, X } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
+import { toast } from 'sonner';
 
 interface FileUploadProps {
   onFileProcessed?: (result: { documentId: string; filename: string }) => void;
@@ -29,8 +30,58 @@ const FileUploaded = ({
 }: FileUploadProps) => {
   const [currentFile, setCurrentFile] = useState<UploadFile | null>(null);
 
+  const onDrop = useCallback(
+    (acceptedFiles: File[], rejectedFiles: any[]) => {
+      // Handle rejected files
+      rejectedFiles.forEach((rejection) => {
+        const { file, errors } = rejection;
+        errors.forEach((error: any) => {
+          if (error.code === 'file-too-large') {
+            toast.error(
+              `File ${file.name} is too large. Maximum size is ${maxSize / 1024 / 1024}MB`,
+            );
+          } else if (error.code === 'file-invalid-type') {
+            toast.error(
+              `File ${file.name} type is not supported. Please upload PDF, DOCX, TXT, or MD files.`,
+            );
+          }
+        });
+      });
+      // Only handle the first accepted file (single file upload)
+      if (acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+
+        // If there's already a file, ask user if they want to replace it
+        if (currentFile && currentFile.status !== 'completed') {
+          toast.error(
+            'Please wait for the current file to finish processing, or remove it first.',
+          );
+          return;
+        }
+
+        const newFile: UploadFile = {
+          file,
+          id: Math.random().toString(36).substring(7),
+          status: 'processing',
+          progress: 0,
+        };
+
+        setCurrentFile(newFile);
+        // uploadFile(newFile);
+
+        // Show info if user dropped multiple files
+        if (acceptedFiles.length > 1) {
+          toast.info(
+            `Only processing the first file: ${file.name}. Please upload files one at a time.`,
+          );
+        }
+      }
+    },
+    [maxSize, currentFile],
+  );
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    // ondrop,
+    onDrop,
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformat-officedocument.wordprocessingml.document':
@@ -42,6 +93,66 @@ const FileUploaded = ({
     maxSize,
     multiple: false,
   });
+
+  //   upload file
+  const uploadFile = async (uploadFile: UploadFile) => {
+    try {
+      // Update status to uploading
+      setCurrentFile((prev) =>
+        prev?.id === uploadFile.id
+          ? { ...prev, status: 'uploading' as const }
+          : prev,
+      );
+
+      // Simulate upload progress
+      for (let i = 0; i <= 100; i += 10) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        setCurrentFile((prev) =>
+          prev?.id === uploadFile.id ? { ...prev, progress: i } : prev,
+        );
+      }
+
+      // Change to processing status
+      setCurrentFile((prev) =>
+        prev?.id === uploadFile.id
+          ? { ...prev, status: 'processing' as const, progress: 0 }
+          : prev,
+      );
+
+      // Call the upload API
+      const formData = new FormData();
+      formData.append('file', uploadFile.file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Update to completed
+      setCurrentFile((prev) =>
+        prev?.id === uploadFile.id
+          ? {
+              ...prev,
+              status: 'completed' as const,
+              progress: 100,
+              documentId: result.documentId,
+            }
+          : prev,
+      );
+      toast.success(
+        `${uploadFile.file.name} uploaded and processed successfully!`,
+      );
+      onFileProcessed?.(result);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    }
+  };
 
   return (
     <div className="w-full space-y-4">
