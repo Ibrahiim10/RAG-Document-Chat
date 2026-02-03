@@ -32,14 +32,17 @@ export async function storeVectors(
     const index = getPineconeIndex();
 
     const vectors = chunks.map((chunk, index) => ({
-      id: `${documentId}-chunk-${index}`,
-      Values: chunk.embeddings,
+      id: `${documentId}-chunk-${index}`, // Unique ID for each chunk
+      values: chunk.embedding, // The actual vector numbers
       metadata: {
+        // Extra info stored with vector
         documentId,
+        chunkIndex: index,
         content: chunk.content,
-        title: metadata.filename,
+        title: metadata.title,
+        filename: metadata.filename,
         fileType: metadata.fileType,
-        timeStamp: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
       },
     }));
 

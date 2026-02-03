@@ -106,5 +106,6 @@ async function createChunks(
 function addContext(chunk: string, filename: string): string {
   const docName = filename.replace(/\.[^/.]+$/, '');
 
-  return `Document : ${document} \n\n ${chunk}`;
+  // return `Document : ${document} \n\n ${chunk}`;
+  return `Document: ${docName}\n\n${chunk}`;
 }

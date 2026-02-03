@@ -1,17 +1,44 @@
 'use client';
 
-import FileUploaded from '@/components/file-uploaded';
+import DocumentList, { DocumentProps } from '@/components/document-list';
+import { FileUpload } from '@/components/file-uploaded';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, MessageSquare, RefreshCw, Upload } from 'lucide-react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function Home() {
+  const [documents, setDocuments] = useState<DocumentProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/documents');
+      if (!response.ok) throw new Error('Failed to fetch documents');
+
+      const data = await response.json();
+      if (data.success) {
+        setDocuments(data.documents);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      toast.error('Failed to load documents');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleFileProcessed = (result: {
     documentId: string;
     filename: string;
   }) => {
-    console.log('File processed', result);
+    fetchDocuments();
+    toast.success(`Document "${result.filename}" processed successfully`);
   };
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -45,8 +72,8 @@ export default function Home() {
               <Button
                 variant="ghost"
                 size="icon"
-                // onClick={fetchDocuments}
-                // disabled={isLoading}
+                onClick={fetchDocuments}
+                disabled={isLoading}
                 className="text-gray-600 hover:bg-gray-100"
               >
                 <RefreshCw
@@ -72,7 +99,7 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <FileUploaded
+                <FileUpload
                   onFileProcessed={handleFileProcessed}
                   maxSize={100 * 1024 * 1024} // 100MB
                 />
@@ -83,10 +110,10 @@ export default function Home() {
           {/* document library */}
 
           <div>
-            {/* <DocumentList 
+            <DocumentList
               documents={documents}
-              onDocumentDeleted={handleDocumentDeleted}
-            /> */}
+              // onDocumentDeleted={handleDocumentDeleted}
+            />
 
             {/* Instructions */}
             <Card className="mt-6">

@@ -12,22 +12,22 @@ import { toast } from 'sonner';
 
 interface FileUploadProps {
   onFileProcessed?: (result: { documentId: string; filename: string }) => void;
-  maxSize?: number;
+  maxSize?: number; // in bytes
 }
 
 interface UploadFile {
   file: File;
   id: string;
-  status: 'uploading' | 'processing' | 'completed' | 'error';
+  status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error';
   progress: number;
   error?: string;
   documentId?: string;
 }
 
-const FileUploaded = ({
+export function FileUpload({
   onFileProcessed,
-  maxSize = 100 * 1024 * 1024,
-}: FileUploadProps) => {
+  maxSize = 100 * 1024 * 1024, // 100MB (change this to 10MB if you want to test the system)
+}: FileUploadProps) {
   const [currentFile, setCurrentFile] = useState<UploadFile | null>(null);
 
   const onDrop = useCallback(
@@ -47,6 +47,7 @@ const FileUploaded = ({
           }
         });
       });
+
       // Only handle the first accepted file (single file upload)
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
@@ -62,12 +63,12 @@ const FileUploaded = ({
         const newFile: UploadFile = {
           file,
           id: Math.random().toString(36).substring(7),
-          status: 'processing',
+          status: 'pending',
           progress: 0,
         };
 
         setCurrentFile(newFile);
-        // uploadFile(newFile);
+        uploadFile(newFile);
 
         // Show info if user dropped multiple files
         if (acceptedFiles.length > 1) {
@@ -84,17 +85,16 @@ const FileUploaded = ({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformat-officedocument.wordprocessingml.document':
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         ['.docx'],
       'text/plain': ['.txt'],
       'text/markdown': ['.md'],
     },
-    maxFiles: 1,
+    maxFiles: 1, // Only allow 1 file
     maxSize,
-    multiple: false,
+    multiple: false, // Disable multiple file selection
   });
 
-  //   upload file
   const uploadFile = async (uploadFile: UploadFile) => {
     try {
       // Update status to uploading
@@ -145,134 +145,156 @@ const FileUploaded = ({
             }
           : prev,
       );
+
       toast.success(
         `${uploadFile.file.name} uploaded and processed successfully!`,
       );
       onFileProcessed?.(result);
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('Upload error:', error);
+      setCurrentFile((prev) =>
+        prev?.id === uploadFile.id
+          ? {
+              ...prev,
+              status: 'error' as const,
+              error: error instanceof Error ? error.message : 'Upload failed',
+            }
+          : prev,
+      );
+      toast.error(`Failed to upload ${uploadFile.file.name}`);
+    }
+  };
+
+  const removeFile = () => {
+    setCurrentFile(null);
+  };
+
+  const retryFile = () => {
+    if (currentFile) {
+      setCurrentFile((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'pending' as const,
+              progress: 0,
+              error: undefined,
+            }
+          : prev,
+      );
+      uploadFile(currentFile);
     }
   };
 
   return (
     <div className="w-full space-y-4">
+      {/* Upload Area */}
       <Card className="border-2 border-dashed border-gray-300 transition-colors hover:border-gray-400">
         <CardContent className="p-6">
           <div
             {...getRootProps()}
-            className={`cursor-pointer text-center space-y-4 p-8 rounded-lg transition-colors ${isDragActive ? 'bg-gray-50 border-gray-400' : 'hover:bg-gray-50/50'}`}
+            className={`
+              cursor-pointer text-center space-y-4 p-8 rounded-lg transition-colors
+              ${isDragActive ? 'bg-gray-50 border-gray-400' : 'hover:bg-gray-50/50'}
+            `}
           >
             <input {...getInputProps()} />
             <div className="mx-auto w-12 h-12 text-gray-500">
               <Upload className="w-full h-full" />
             </div>
-
             <div className="space-y-2">
               <h3 className="text-lg font-medium text-gray-900">
-                {isDragActive ? 'Drop file here' : 'Upload your document'}
+                {isDragActive ? 'Drop files here' : 'Upload your documents'}
               </h3>
               <p className="text-sm text-gray-600">
-                Drag & drop file here, or click to browse
+                Drag & drop files here, or click to browse
               </p>
               <p className="text-xs text-gray-500">
-                Support PDF, DOCX, TXT, MD . Max {maxSize / 1024 / 1024}MB . One
-                file at a time
+                Supports PDF, DOCX, TXT, MD • Max {maxSize / 1024 / 1024}MB •
+                One file at a time
               </p>
             </div>
             <Button
               variant="outline"
               type="button"
-              className="border-gary-300 text-gray-700 hover:bg-gray-500 cursor-pointer"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               Choose File
             </Button>
           </div>
-
-          {/* current files */}
-          {currentFile && (
-            <Card>
-              <CardContent className="p-4">
-                ,<h4 className="font-medium mb-3">Current File</h4>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <File className="w-5 h-5 text-gray-600 flex-shrink-0" />
-
-                  <div className="flex-1 min-w-0">
-                    {/* badge & file name */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium truncate">
-                        {currentFile.file.name}
-                      </span>
-                      <Badge
-                        variant={
-                          currentFile.status === 'completed'
-                            ? 'default'
-                            : currentFile.status === 'error'
-                              ? 'destructive'
-                              : 'secondary'
-                        }
-                      >
-                        {currentFile.status}
-                      </Badge>
-                    </div>
-                    {/* file size */}
-                    <div className="text-xs text-gray-500">
-                      {(currentFile.file.size / 1024 / 1024).toFixed(1)}MB
-                    </div>
-
-                    {/* progress bar */}
-                    {(currentFile.status === 'uploading' ||
-                      currentFile.status === 'processing') && (
-                      <div className="mt-2">
-                        <Progress
-                          value={currentFile.progress}
-                          className="h-1"
-                        />
-                        <div className="text-xs text-gray-500 mb-1">
-                          {currentFile.status === 'uploading'
-                            ? 'Uploading...'
-                            : 'Processing...'}
-                        </div>
-                      </div>
-                    )}
-
-                    {currentFile.error && (
-                      <Alert className="mt-3">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-xs">
-                          {currentFile.error}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {currentFile.status === 'completed' && (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    )}
-                    {currentFile.status === 'error' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        //   onClick={retryFile}
-                      >
-                        Retry
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      // onClick={removeFile}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </CardContent>
       </Card>
+
+      {/* Current File */}
+      {currentFile && (
+        <Card>
+          <CardContent className="p-4">
+            <h4 className="font-medium mb-3">Current File</h4>
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <File className="w-5 h-5 text-gray-600 flex-shrink-0" />
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium truncate">
+                    {currentFile.file.name}
+                  </span>
+                  <Badge
+                    variant={
+                      currentFile.status === 'completed'
+                        ? 'default'
+                        : currentFile.status === 'error'
+                          ? 'destructive'
+                          : 'secondary'
+                    }
+                  >
+                    {currentFile.status}
+                  </Badge>
+                </div>
+
+                <div className="text-xs text-gray-500">
+                  {(currentFile.file.size / 1024 / 1024).toFixed(1)} MB
+                </div>
+
+                {(currentFile.status === 'uploading' ||
+                  currentFile.status === 'processing') && (
+                  <div className="mt-2">
+                    <Progress value={currentFile.progress} className="h-1" />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {currentFile.status === 'uploading'
+                        ? 'Uploading...'
+                        : 'Processing...'}
+                    </div>
+                  </div>
+                )}
+
+                {currentFile.error && (
+                  <Alert className="mt-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      {currentFile.error}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1">
+                {currentFile.status === 'completed' && (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                )}
+
+                {currentFile.status === 'error' && (
+                  <Button size="sm" variant="outline" onClick={retryFile}>
+                    Retry
+                  </Button>
+                )}
+
+                <Button size="sm" variant="ghost" onClick={removeFile}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-};
-
-export default FileUploaded;
+}
