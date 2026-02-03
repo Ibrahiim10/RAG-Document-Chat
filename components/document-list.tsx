@@ -8,11 +8,12 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export interface DocumentProps {
   documentId: string;
@@ -28,7 +29,38 @@ export interface DocumentProps {
   contentLength?: number;
 }
 
-const DocumentList = ({ documents }: { documents: DocumentProps[] }) => {
+interface DocumentListProps {
+  documents: DocumentProps[];
+  onDocumentDeleted: (documentId: string) => void;
+}
+
+const DocumentList = ({ documents, onDocumentDeleted }: DocumentListProps) => {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (documentId: string) => {
+    if (deletingId) return; // Prevent multiple deletions
+
+    setDeletingId(documentId);
+
+    try {
+      const response = await fetch(`/api/documents?documentId=${documentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete document');
+      }
+
+      onDocumentDeleted(documentId);
+      toast.success('Document deleted successfully');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete document');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -180,15 +212,15 @@ const DocumentList = ({ documents }: { documents: DocumentProps[] }) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  // onClick={() => handleDelete(doc.documentId)}
-                  // disabled={deletingId === doc.documentId}
+                  onClick={() => handleDelete(doc.documentId)}
+                  disabled={deletingId === doc.documentId}
                   className="text-muted-foreground hover:text-destructive"
                 >
-                  {/* {deletingId === doc.documentId ? (
+                  {deletingId === doc.documentId ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Trash2 className="w-4 h-4" />
-                  )} */}
+                  )}
                 </Button>
               </div>
             </div>

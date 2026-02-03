@@ -40,6 +40,10 @@ export default function Home() {
     fetchDocuments();
     toast.success(`Document "${result.filename}" processed successfully`);
   };
+
+  const handleDocumentDeleted = (documentId: string) => {
+    setDocuments((prev) => prev.filter((doc) => doc.documentId !== documentId));
+  };
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -112,7 +116,7 @@ export default function Home() {
           <div>
             <DocumentList
               documents={documents}
-              // onDocumentDeleted={handleDocumentDeleted}
+              onDocumentDeleted={handleDocumentDeleted}
             />
 
             {/* Instructions */}

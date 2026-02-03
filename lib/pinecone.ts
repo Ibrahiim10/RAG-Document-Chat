@@ -62,3 +62,19 @@ export async function storeVectors(
     throw error;
   }
 }
+
+// Delete vector from pinecone
+
+export async function deleteVectors(documentId: string) {
+  try {
+    const index = getPineconeIndex();
+    await index.deleteMany({
+      documentId,
+    });
+
+    console.log(`${documentId} vectors deleted from pinecone`);
+  } catch (error) {
+    console.error('Error deleting vectors from pinecone:', error);
+    throw error;
+  }
+}

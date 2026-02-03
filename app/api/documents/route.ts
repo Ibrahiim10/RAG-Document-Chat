@@ -1,8 +1,9 @@
-import { getAllDocuments } from '@/lib/mongodb';
-import { NextResponse } from 'next/server';
+import { deleteDocument, getAllDocuments, getDocument } from '@/lib/mongodb';
+import { deleteVectors } from '@/lib/pinecone';
+import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/documents - Get all documents
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const documents = await getAllDocuments();
 
@@ -26,6 +27,45 @@ export async function GET() {
     console.error('Error fetching documents:', error);
     return NextResponse.json(
       { error: 'Failed to fetch documents' },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/documents - Delete a document
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const documentId = searchParams.get('documentId');
+
+    if (!documentId) {
+      return NextResponse.json(
+        { error: 'Document ID is required' },
+        { status: 400 },
+      );
+    }
+
+    // Check if document exists
+    const document = await getDocument(documentId);
+    if (!document) {
+      return NextResponse.json(
+        { error: 'Document not found' },
+        { status: 404 },
+      );
+    }
+
+    // Delete from both Pinecone and MongoDB
+    await deleteVectors(documentId);
+    await deleteDocument(documentId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Document deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete document' },
       { status: 500 },
     );
   }
