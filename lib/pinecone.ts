@@ -1,8 +1,14 @@
 import { Pinecone } from '@pinecone-database/pinecone';
-import { timeStamp } from 'console';
-import { Vault } from 'lucide-react';
 
 let pineconeClient: Pinecone | null = null;
+
+export interface DocumentSource {
+  documentId: string;
+  documentTitle: string;
+  chunkId: string;
+  content: string;
+  similarity: number;
+}
 
 // initialize pinecone client
 export function getPineconeClient(): Pinecone {
@@ -75,6 +81,43 @@ export async function deleteVectors(documentId: string) {
     console.log(`${documentId} vectors deleted from pinecone`);
   } catch (error) {
     console.error('Error deleting vectors from pinecone:', error);
+    throw error;
+  }
+}
+
+// search for similar vectors in pinecone
+export async function searchSimilarVectors(
+  queryEmbedding: number[],
+  topK: number = 5,
+  filter?: Record<string, any>,
+) {
+  try {
+    const index = getPineconeIndex();
+    const searchResult = await index.query({
+      vector: queryEmbedding,
+      topK,
+      filter,
+    });
+
+    console.log('Search result:', searchResult);
+
+    const sources: DocumentSource[] = [];
+    for (const match of searchResult.matches || []) {
+      if (!match.metadata || !match.metadata.documentId) continue;
+
+      sources.push({
+        documentId: match.metadata.documentId as string,
+        documentTitle: match.metadata.title as string,
+        chunkId: match.id,
+        content: match.metadata.content as string,
+        similarity: match.score as number,
+      });
+    }
+
+    console.log('Sources', sources);
+    return sources;
+  } catch (error) {
+    console.error('Error searching vectors in pinecone:', error);
     throw error;
   }
 }
