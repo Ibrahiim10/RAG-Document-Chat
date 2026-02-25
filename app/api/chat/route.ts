@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       validatedMessages = await validateUIMessages({ messages: allMessages });
     } catch (error) {
       console.error('Error validating messages:', error);
-      validatedMessages = allMessages; // fallback to original messages if validation fails
+      validatedMessages = allMessages;
     }
 
     let context = '';
